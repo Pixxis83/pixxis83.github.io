@@ -1,0 +1,1327 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SkyFlip — Long-Term Bazaar Flip Tool</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0a0c10;--surface:#111418;--surface2:#181c22;--border:#232830;--accent:#f0c040;--accent2:#4fc3f7;--green:#56d97e;--red:#f06060;--orange:#f0904a;--purple:#b47fff;--text:#e8eaf0;--muted:#6b7280;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'DM Mono',monospace;min-height:100vh;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(240,192,64,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(240,192,64,.025) 1px,transparent 1px);background-size:44px 44px;pointer-events:none;z-index:0;}
+.wrap{max-width:1300px;margin:0 auto;padding:0 22px;position:relative;z-index:1;}
+
+/* HEADER */
+header{padding:22px 0 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+.logo{display:flex;align-items:center;gap:9px;}
+.logo-icon{width:33px;height:33px;background:var(--accent);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:16px;}
+.logo h1{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;letter-spacing:-.5px;}
+.logo h1 span{color:var(--accent);}
+.hdr-right{display:flex;align-items:center;gap:9px;flex-wrap:wrap;}
+.status-bar{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--muted);}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--muted);transition:background .3s;}
+.dot.live{background:var(--green);box-shadow:0 0 6px var(--green);animation:pulse 2s infinite;}
+.dot.err{background:var(--red);}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* TABS */
+.tabs{display:flex;gap:2px;padding:16px 0 0;border-bottom:1px solid var(--border);margin-bottom:20px;overflow-x:auto;}
+.tab{padding:9px 17px;border:none;background:transparent;color:var(--muted);font-family:'DM Mono',monospace;font-size:12px;cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;white-space:nowrap;}
+.tab:hover{color:var(--text);}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+
+/* BUTTONS */
+.btn{background:var(--surface);border:1px solid var(--border);border-radius:7px;color:var(--text);font-family:'DM Mono',monospace;font-size:12px;padding:8px 12px;cursor:pointer;outline:none;transition:all .2s;}
+.btn:hover{border-color:var(--accent);}
+.btn-p{background:var(--accent);color:#000;font-weight:600;border-color:var(--accent);}
+.btn-p:hover{background:#ffd060;}
+.btn-p:disabled{opacity:.5;cursor:not-allowed;}
+select{background:var(--surface);border:1px solid var(--border);border-radius:7px;color:var(--text);font-family:'DM Mono',monospace;font-size:12px;padding:8px 12px;cursor:pointer;outline:none;transition:border-color .2s;}
+select:focus{border-color:var(--accent);}
+
+/* MAYOR */
+.mayor-banner{border-radius:10px;padding:13px 16px;display:flex;align-items:flex-start;gap:13px;margin-bottom:18px;border:1px solid;animation:fd .4s ease;}
+.m-icon{font-size:25px;line-height:1;flex-shrink:0;margin-top:2px;}
+.m-body{flex:1;}
+.m-name{font-family:'Syne',sans-serif;font-size:14px;font-weight:800;}
+.m-desc{font-size:11px;color:var(--muted);margin-top:3px;line-height:1.5;}
+.m-items{margin-top:8px;display:flex;flex-wrap:wrap;gap:5px;}
+.m-chip{padding:3px 9px;border-radius:4px;font-size:11px;font-weight:600;background:rgba(255,255,255,.07);cursor:pointer;transition:background .15s;}
+.m-chip:hover{background:rgba(255,255,255,.14);}
+.m-cycle{font-size:10px;color:var(--muted);margin-top:5px;}
+
+/* STATS */
+.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:9px;margin-bottom:18px;}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:13px;transition:transform .2s;}
+.stat-card:hover{transform:translateY(-2px);}
+.s-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;}
+.s-val{font-size:18px;font-family:'Syne',sans-serif;font-weight:700;}
+.gold{color:var(--accent)}.gre{color:var(--green)}.blu{color:var(--accent2)}.oran{color:var(--orange)}.re{color:var(--red)}
+
+/* CONTROLS */
+.controls{display:flex;gap:9px;margin-bottom:18px;flex-wrap:wrap;align-items:center;}
+.s-box{flex:1;min-width:170px;position:relative;}
+.s-box input{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:7px;color:var(--text);font-family:'DM Mono',monospace;font-size:12px;padding:8px 13px 8px 34px;outline:none;transition:border-color .2s;}
+.s-box input:focus{border-color:var(--accent);}
+.s-ico{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:12px;}
+
+/* TABLE */
+.t-wrap{background:var(--surface);border:1px solid var(--border);border-radius:11px;overflow:hidden;margin-bottom:20px;}
+.t-head{display:grid;grid-template-columns:2.2fr 1fr 1fr 1fr 1.1fr 1.1fr 1fr;padding:10px 14px;background:var(--surface2);border-bottom:1px solid var(--border);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;gap:8px;}
+.t-body{max-height:560px;overflow-y:auto;}
+.t-body::-webkit-scrollbar{width:3px;}
+.t-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+.t-row{display:grid;grid-template-columns:2.2fr 1fr 1fr 1fr 1.1fr 1.1fr 1fr;padding:11px 14px;border-bottom:1px solid var(--border);gap:8px;align-items:center;transition:background .15s;cursor:pointer;animation:fd .3s ease forwards;opacity:0;}
+.t-row:hover{background:var(--surface2);}
+.t-row:last-child{border-bottom:none;}
+@keyframes fd{to{opacity:1}}
+.i-name{font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.i-sub{font-size:10px;color:var(--muted);margin-top:2px;display:flex;gap:4px;align-items:center;flex-wrap:wrap;}
+.cell{font-size:11px;}
+
+/* BADGES */
+.b{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;}
+.b-g{background:rgba(86,217,126,.13);color:var(--green);border:1px solid rgba(86,217,126,.25);}
+.b-y{background:rgba(240,192,64,.13);color:var(--accent);border:1px solid rgba(240,192,64,.25);}
+.b-b{background:rgba(79,195,247,.13);color:var(--accent2);border:1px solid rgba(79,195,247,.25);}
+.b-r{background:rgba(240,96,96,.13);color:var(--red);border:1px solid rgba(240,96,96,.25);}
+.b-o{background:rgba(240,144,74,.13);color:var(--orange);border:1px solid rgba(240,144,74,.25);}
+.b-p{background:rgba(180,127,255,.13);color:var(--purple);border:1px solid rgba(180,127,255,.25);}
+
+/* LIQ BAR */
+.liq-bar{width:100%;height:3px;background:var(--border);border-radius:2px;overflow:hidden;margin-top:3px;}
+.lf-h{background:var(--green);}
+.lf-m{background:var(--accent);}
+.lf-l{background:var(--red);}
+
+/* DETAIL */
+.detail{background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:20px;margin-bottom:20px;display:none;}
+.detail.open{display:block;animation:slideD .3s ease;}
+@keyframes slideD{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+.d-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;gap:12px;flex-wrap:wrap;}
+.d-title{font-family:'Syne',sans-serif;font-size:18px;font-weight:700;}
+.close{background:transparent;border:1px solid var(--border);color:var(--muted);width:26px;height:26px;border-radius:5px;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;transition:all .2s;flex-shrink:0;}
+.close:hover{border-color:var(--red);color:var(--red);}
+.d-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));gap:9px;margin-bottom:14px;}
+.d-stat{background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:10px;}
+.d-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:3px;}
+.d-val{font-size:14px;font-family:'Syne',sans-serif;font-weight:600;}
+
+/* PANELS */
+.panel{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:13px;margin-bottom:12px;}
+.p-title{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:9px;}
+.sig-row{display:flex;align-items:center;justify-content:space-between;padding:6px 8px;border-radius:5px;background:var(--surface);margin-bottom:4px;font-size:11px;flex-wrap:wrap;gap:4px;}
+.sig-label{color:var(--muted);}
+.sig-right{display:flex;align-items:center;gap:7px;}
+.sig-tip{font-size:10px;color:var(--muted);font-style:italic;}
+.sig-val{font-weight:600;}
+.verdict{margin-top:9px;padding:9px 11px;border-radius:6px;font-size:12px;border-left:3px solid;line-height:1.6;}
+.v-safe{background:rgba(86,217,126,.07);border-color:var(--green);color:var(--green);}
+.v-risky{background:rgba(240,192,64,.07);border-color:var(--accent);color:var(--accent);}
+.v-danger{background:rgba(240,96,96,.07);border-color:var(--red);color:var(--red);}
+.lt-banner{border-radius:7px;padding:11px 14px;margin-bottom:13px;font-size:12px;line-height:1.7;border:1px solid;}
+
+/* SIM */
+.sim-row{display:flex;gap:9px;flex-wrap:wrap;align-items:flex-end;margin-bottom:9px;}
+.sf{display:flex;flex-direction:column;gap:3px;}
+.sf label{font-size:10px;color:var(--muted);text-transform:uppercase;}
+.sf input{background:var(--surface);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:'DM Mono',monospace;font-size:12px;padding:7px 10px;width:130px;outline:none;transition:border-color .2s;}
+.sf input:focus{border-color:var(--accent);}
+.sim-result{background:var(--surface);border-radius:6px;padding:11px;font-size:12px;line-height:2;}
+.sl{display:flex;justify-content:space-between;}
+.sl.sep{border-top:1px solid var(--border);margin-top:4px;padding-top:4px;}
+
+/* CALC TAB */
+.calc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(265px,1fr));gap:16px;margin-bottom:20px;}
+.c-card{background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:18px;}
+.c-title{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;margin-bottom:13px;display:flex;align-items:center;gap:7px;}
+.c-title::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--accent);display:inline-block;}
+.fg{margin-bottom:9px;}
+.fg label{display:block;font-size:10px;color:var(--muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:.4px;}
+.fg input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:'DM Mono',monospace;font-size:12px;padding:7px 10px;outline:none;transition:border-color .2s;}
+.fg input:focus{border-color:var(--accent);}
+.r-box{margin-top:13px;padding:11px;background:var(--surface2);border-radius:7px;border:1px solid var(--border);font-size:12px;line-height:1.9;}
+.rl{display:flex;justify-content:space-between;}
+.rl.sep{border-top:1px solid var(--border);margin-top:5px;padding-top:5px;}
+.vp{color:var(--green)}.vn{color:var(--red)}.va{color:var(--accent);font-weight:600}.vb{color:var(--accent2)}
+
+/* LOADING */
+.loading{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:55px;gap:13px;color:var(--muted);}
+.sp{width:28px;height:28px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty{text-align:center;padding:55px;color:var(--muted);}
+.empty .big{font-size:28px;margin-bottom:8px;}
+
+/* ABOUT */
+.about-card{background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:22px;max-width:660px;}
+.about-card p{font-size:12px;line-height:1.9;color:var(--muted);margin-bottom:11px;}
+.about-card strong{color:var(--text);}
+.about-note{padding:10px 12px;background:var(--surface2);border-radius:7px;border-left:3px solid var(--accent2);font-size:11px;color:var(--accent2);margin-top:13px;}
+
+
+/* ===== CRAFT TAB ===== */
+.player-card{background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:18px;margin-bottom:18px;}
+.player-search{display:flex;gap:9px;align-items:center;flex-wrap:wrap;}
+.player-search input{flex:1;min-width:180px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;color:var(--text);font-family:'DM Mono',monospace;font-size:13px;padding:9px 13px;outline:none;transition:border-color .2s;}
+.player-search input:focus{border-color:var(--accent);}
+.player-info{display:flex;align-items:center;gap:14px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);flex-wrap:wrap;}
+.player-avatar{width:48px;height:48px;border-radius:8px;border:2px solid var(--border);}
+.player-name{font-family:'Syne',sans-serif;font-size:16px;font-weight:800;}
+.player-stats{display:flex;gap:10px;margin-top:6px;flex-wrap:wrap;}
+.p-stat{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:6px 11px;font-size:11px;}
+.p-stat-label{color:var(--muted);margin-bottom:2px;}
+.p-stat-val{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;}
+
+.craft-filters{display:flex;gap:9px;margin-bottom:16px;flex-wrap:wrap;align-items:center;}
+.craft-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px;margin-bottom:20px;}
+.craft-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:15px;cursor:pointer;transition:all .2s;animation:fd .3s ease forwards;opacity:0;}
+.craft-card:hover{border-color:var(--accent);transform:translateY(-2px);}
+.craft-card.cant-afford{opacity:.5;border-color:var(--border)!important;}
+.craft-card.cant-afford:hover{transform:none;}
+.craft-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;}
+.craft-name{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;}
+.craft-cat{font-size:10px;color:var(--muted);margin-top:2px;}
+.craft-profit{text-align:right;}
+.craft-profit-val{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;}
+.craft-profit-label{font-size:10px;color:var(--muted);}
+.craft-mats{margin-top:8px;display:flex;flex-direction:column;gap:4px;}
+.craft-mat{display:flex;justify-content:space-between;align-items:center;font-size:11px;padding:4px 7px;background:var(--surface2);border-radius:5px;}
+.craft-mat-name{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px;}
+.craft-mat-cost{color:var(--text);white-space:nowrap;}
+.craft-mat-cost.missing{color:var(--red);}
+.craft-totals{margin-top:8px;padding-top:8px;border-top:1px solid var(--border);display:flex;justify-content:space-between;font-size:11px;}
+.craft-sell-row{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;}
+.craft-locked{display:flex;align-items:center;gap:6px;padding:6px 9px;background:rgba(240,96,96,.1);border-radius:6px;font-size:11px;color:var(--red);margin-top:6px;}
+.craft-affordable{display:flex;align-items:center;gap:6px;padding:6px 9px;background:rgba(86,217,126,.1);border-radius:6px;font-size:11px;color:var(--green);margin-top:6px;}
+.no-player-msg{text-align:center;padding:40px;color:var(--muted);font-size:12px;}
+
+@media(max-width:900px){
+  .t-head,.t-row{grid-template-columns:2fr 1fr 1fr 1fr 1fr!important;}
+  .col-manip,.col-liq2{display:none;}
+}
+@media(max-width:580px){
+  .t-head,.t-row{grid-template-columns:2fr 1fr 1fr!important;}
+  .col-score,.col-act{display:none;}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">💰</div>
+    <h1>Sky<span>Flip</span></h1>
+  </div>
+  <div class="hdr-right">
+    <div class="status-bar">
+      <div class="dot" id="dot"></div>
+      <span id="st">Non connecté</span>
+    </div>
+    <button class="btn btn-p" id="refreshBtn" onclick="loadAll()">⟳ Actualiser</button>
+  </div>
+</header>
+
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('flips',this)">📈 Flips Long Terme</button>
+  <button class="tab" onclick="switchTab('calc',this)">🧮 Calculatrice</button>
+  <button class="tab" onclick="switchTab('craft',this)">⚒️ Craft Rentable</button>
+  <button class="tab" onclick="switchTab('about',this)">ℹ️ Infos</button>
+</div>
+
+<!-- ===== FLIPS ===== -->
+<div id="tab-flips">
+
+  <div id="mayorBanner" style="display:none" class="mayor-banner">
+    <div class="m-icon" id="mIcon">👑</div>
+    <div class="m-body">
+      <div class="m-name" id="mName">—</div>
+      <div class="m-desc" id="mDesc">—</div>
+      <div class="m-items" id="mItems"></div>
+      <div class="m-cycle" id="mCycle"></div>
+    </div>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card"><div class="s-label">Opportunités</div><div class="s-val gold" id="sOpps">—</div></div>
+    <div class="stat-card"><div class="s-label">Meilleur profit/u</div><div class="s-val gre" id="sBest">—</div></div>
+    <div class="stat-card"><div class="s-label">Items manipulés</div><div class="s-val re" id="sManip">—</div></div>
+    <div class="stat-card"><div class="s-label">Liquidité faible</div><div class="s-val oran" id="sLowLiq">—</div></div>
+    <div class="stat-card"><div class="s-label">Items maire</div><div class="s-val" style="color:var(--purple)" id="sMayor">—</div></div>
+    <div class="stat-card"><div class="s-label">MAJ</div><div class="s-val" id="sTime" style="font-size:12px">—</div></div>
+  </div>
+
+  <div class="controls">
+    <div class="s-box">
+      <span class="s-ico">🔍</span>
+      <input type="text" id="searchInput" placeholder="Rechercher un item..." oninput="filterItems()">
+    </div>
+    <select id="sortSel" onchange="sortItems()">
+      <option value="score">Score global</option>
+      <option value="profit">Profit net</option>
+      <option value="margin">Marge %</option>
+      <option value="volume">Volume</option>
+      <option value="liq">Liquidité</option>
+    </select>
+    <select id="catSel" onchange="filterItems()">
+      <option value="all">Toutes catégories</option>
+      <option value="MAYOR">⭐ Lié au Maire</option>
+      <option value="FARMING">🌾 Farming</option>
+      <option value="MINING">⛏️ Mining</option>
+      <option value="COMBAT">⚔️ Combat</option>
+      <option value="FORAGING">🪵 Foraging</option>
+      <option value="FISHING">🎣 Fishing</option>
+      <option value="ENCHANTING">✨ Enchanting</option>
+    </select>
+    <select id="minProfSel" onchange="filterItems()">
+      <option value="0">Profit min: Tous</option>
+      <option value="100000">100k+</option>
+      <option value="500000">500k+</option>
+      <option value="1000000">1M+</option>
+      <option value="5000000">5M+</option>
+    </select>
+    <select id="manipSel" onchange="filterItems()">
+      <option value="all">Manip: Tous</option>
+      <option value="safe">✅ Sûrs seulement</option>
+      <option value="hide_danger">🚫 Masquer dangereux</option>
+    </select>
+    <select id="liqSel" onchange="filterItems()">
+      <option value="all">Liquidité: Tous</option>
+      <option value="high">💧 Haute seulement</option>
+      <option value="med">💧 Moyenne+</option>
+    </select>
+  </div>
+
+  <!-- DETAIL PANEL -->
+  <div class="detail" id="detailPanel">
+    <div class="d-header">
+      <div>
+        <div class="d-title" id="dpName">—</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px" id="dpId">—</div>
+      </div>
+      <button class="close" onclick="closeDetail()">✕</button>
+    </div>
+    <div class="lt-banner" id="ltBanner" style="display:none"></div>
+    <div class="d-grid" id="dpGrid"></div>
+
+    <!-- Manip -->
+    <div class="panel">
+      <div class="p-title">🔍 Analyse anti-manipulation</div>
+      <div id="manipSignals"></div>
+      <div class="verdict" id="manipVerdict"></div>
+    </div>
+
+    <!-- Liquidity & buy order timing -->
+    <div class="panel">
+      <div class="p-title">💧 Liquidité & Temps de buy order</div>
+      <div id="liqSignals"></div>
+    </div>
+
+    <!-- Simulator -->
+    <div class="panel">
+      <div class="p-title">📦 Simulateur de flip</div>
+      <div class="sim-row">
+        <div class="sf"><label>Quantité</label><input type="number" id="simQty" value="64" min="1" oninput="updateSim()"></div>
+        <div class="sf"><label>Prix achat (override)</label><input type="number" id="simBuy" placeholder="Auto" oninput="updateSim()"></div>
+        <div class="sf"><label>Prix vente (override)</label><input type="number" id="simSell" placeholder="Auto" oninput="updateSim()"></div>
+      </div>
+      <div class="sim-result" id="simResult">—</div>
+    </div>
+  </div>
+
+  <!-- TABLE -->
+  <div class="t-wrap">
+    <div class="t-head">
+      <div>Item</div>
+      <div>Achat BZ</div>
+      <div>Vente visée</div>
+      <div>Profit net/u</div>
+      <div class="col-liq2">Liquidité</div>
+      <div class="col-manip">Risque manip</div>
+      <div class="col-act">Action</div>
+    </div>
+    <div class="t-body" id="tableBody">
+      <div class="loading"><div class="sp"></div><div>Chargement Bazaar...</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== CALC ===== -->
+<div id="tab-calc" style="display:none">
+  <div class="calc-grid">
+    <div class="c-card">
+      <div class="c-title">Profit AH (taxe 1%)</div>
+      <div class="fg"><label>Prix d'achat</label><input type="number" id="ahBuy" placeholder="500000" oninput="calcAH()"></div>
+      <div class="fg"><label>Prix de vente</label><input type="number" id="ahSell" placeholder="750000" oninput="calcAH()"></div>
+      <div class="fg"><label>Quantité</label><input type="number" id="ahQty" value="1" oninput="calcAH()"></div>
+      <div class="r-box" id="ahResult">
+        <div class="rl"><span>Coût total</span><span>—</span></div>
+        <div class="rl"><span>Revenu brut</span><span>—</span></div>
+        <div class="rl"><span>Taxe AH 1%</span><span class="vn">—</span></div>
+        <div class="rl sep"><span>Profit net</span><span class="va">—</span></div>
+        <div class="rl"><span>Marge</span><span>—</span></div>
+      </div>
+    </div>
+    <div class="c-card">
+      <div class="c-title">Flip Bazaar Long Terme</div>
+      <div class="fg"><label>Prix achat (Instant Buy)</label><input type="number" id="bzBuy" placeholder="1200" oninput="calcBZ()"></div>
+      <div class="fg"><label>Prix vente visé (futur)</label><input type="number" id="bzSell" placeholder="1800" oninput="calcBZ()"></div>
+      <div class="fg"><label>Quantité</label><input type="number" id="bzQty" value="1000" oninput="calcBZ()"></div>
+      <div class="fg"><label>Attente avant revente (jours)</label><input type="number" id="bzDays" value="30" oninput="calcBZ()"></div>
+      <div class="fg"><label>Temps buy order estimé (h)</label><input type="number" id="bzBuyTime" value="2" oninput="calcBZ()"></div>
+      <div class="r-box" id="bzResult">
+        <div class="rl"><span>Investissement</span><span>—</span></div>
+        <div class="rl"><span>Revenu brut</span><span>—</span></div>
+        <div class="rl sep"><span>Profit net</span><span class="va">—</span></div>
+        <div class="rl"><span>Marge</span><span>—</span></div>
+        <div class="rl"><span>Profit/jour</span><span class="vp">—</span></div>
+        <div class="rl"><span>ROI</span><span class="vb">—</span></div>
+      </div>
+    </div>
+    <div class="c-card">
+      <div class="c-title">ROI & Récupération capital</div>
+      <div class="fg"><label>Capital investi</label><input type="number" id="roiCap" placeholder="10000000" oninput="calcROI()"></div>
+      <div class="fg"><label>Profit par flip</label><input type="number" id="roiProfit" placeholder="200000" oninput="calcROI()"></div>
+      <div class="fg"><label>Flips par semaine</label><input type="number" id="roiWeekly" value="4" oninput="calcROI()"></div>
+      <div class="r-box" id="roiResult">
+        <div class="rl"><span>Profit/semaine</span><span class="vp">—</span></div>
+        <div class="rl"><span>Profit/mois</span><span class="vp">—</span></div>
+        <div class="rl"><span>ROI mensuel</span><span class="vb">—</span></div>
+        <div class="rl sep"><span>Récupération capital</span><span class="va">—</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ===== CRAFT ===== -->
+<div id="tab-craft" style="display:none">
+
+  <!-- Player search -->
+  <div class="player-card">
+    <div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;margin-bottom:12px;">👤 Profil joueur</div>
+    <div class="player-search">
+      <input type="text" id="playerInput" placeholder="Pseudo Minecraft (ex: Technoblade)" onkeydown="if(event.key==='Enter')loadPlayer()">
+      <select id="profileSel" onchange="onProfileChange()" style="display:none">
+        <option>Chargement...</option>
+      </select>
+      <button class="btn btn-p" onclick="loadPlayer()" id="playerBtn">🔍 Charger</button>
+    </div>
+    <div id="playerInfo" style="display:none" class="player-info">
+      <img id="playerAvatar" class="player-avatar" src="" alt="">
+      <div>
+        <div class="player-name" id="playerName">—</div>
+        <div class="player-stats" id="playerStats"></div>
+      </div>
+    </div>
+    <div id="playerError" style="display:none;margin-top:10px;font-size:12px;color:var(--red);padding:8px 12px;background:rgba(240,96,96,.08);border-radius:6px;border-left:3px solid var(--red)"></div>
+  </div>
+
+  <!-- Craft filters -->
+  <div class="craft-filters">
+    <select id="craftSortSel" onchange="renderCrafts()">
+      <option value="profit_bz">Profit BZ (meilleur)</option>
+      <option value="profit_ah">Profit AH (meilleur)</option>
+      <option value="margin">Marge %</option>
+      <option value="cost">Coût (croissant)</option>
+    </select>
+    <select id="craftCatSel" onchange="renderCrafts()">
+      <option value="all">Toutes catégories</option>
+      <option value="FARMING">🌾 Farming</option>
+      <option value="MINING">⛏️ Mining</option>
+      <option value="COMBAT">⚔️ Combat</option>
+      <option value="FISHING">🎣 Fishing</option>
+      <option value="ENCHANTING">✨ Enchanting</option>
+      <option value="FORAGING">🪵 Foraging</option>
+    </select>
+    <select id="craftAffordSel" onchange="renderCrafts()">
+      <option value="all">Tous les crafts</option>
+      <option value="affordable">✅ Abordables seulement</option>
+    </select>
+    <select id="craftMinProfSel" onchange="renderCrafts()">
+      <option value="0">Profit min: Tous</option>
+      <option value="10000">10k+</option>
+      <option value="50000">50k+</option>
+      <option value="100000">100k+</option>
+      <option value="500000">500k+</option>
+    </select>
+  </div>
+
+  <div id="craftList">
+    <div class="no-player-msg">
+      <div style="font-size:28px;margin-bottom:8px">⚒️</div>
+      <div>Entrez votre pseudo pour voir les crafts rentables personnalisés</div>
+      <div style="margin-top:6px;font-size:11px">Les crafts seront filtrés selon votre purse et vos collections débloquées</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== ABOUT ===== -->
+<div id="tab-about" style="display:none">
+  <div class="about-card">
+    <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:800;margin-bottom:14px;">À propos de SkyFlip</div>
+    <p><strong>SkyFlip</strong> analyse le Bazaar en temps réel et identifie les meilleures opportunités de flip à long terme — en tenant compte du maire actif, de la liquidité réelle, et des signaux de manipulation.</p>
+    <p><strong style="color:var(--accent)">Flips liés aux Maires</strong><br>
+    Chaque maire booste certaines catégories d'items. Diana → Griffin Feather & drops mythologiques. Derpy → Farming crops. Cole → Mining & Gemstones. L'outil détecte le maire actif via l'API et tag les items concernés avec ⭐.</p>
+    <p><strong style="color:var(--accent)">Détection de manipulation (4 signaux)</strong><br>
+    1. <strong>Ratio buy/sell orders</strong> — déséquilibre extrême = wall artificiel<br>
+    2. <strong>Spread anormal</strong> — marge > 40% souvent non naturelle<br>
+    3. <strong>Profondeur du marché</strong> — peu d'ordres = facile à manipuler<br>
+    4. <strong>Volume vs spread</strong> — faible volume + gros spread = pump probable</p>
+    <p><strong style="color:var(--accent)">Liquidité & Temps de buy order</strong><br>
+    Le volume hebdo permet de calculer combien de temps il faut pour remplir un buy order selon la quantité souhaitée (×64, ×512, ×1000). Si le marché bouge 100 unités/semaine, en acheter 1000 prend 10 semaines — l'outil l'affiche clairement.</p>
+    <p><strong style="color:var(--accent)">Score global</strong> = Marge (30%) + Volume (30%) + Liquidité (20%) + Stabilité prix (20%), avec malus si manipulation et bonus si item lié au maire.</p>
+    <div class="about-note">⚠️ Données indicatives. Les prix Bazaar fluctuent. N'investissez jamais plus que ce que vous pouvez perdre.</div>
+  </div>
+</div>
+
+</div><!-- /wrap -->
+
+<script>
+// ===== MAYOR DATABASE =====
+const MAYOR_DATA = {
+  Diana:   { icon:'🔮', color:'#a855f7', desc:'Booste les burrows mythologiques — les drops mythologiques (Griffin Feather, etc.) explosent en demande.', boost:'Mythological items × 2–4', duration:'~1 mois', items:['GRIFFIN_FEATHER','CHIMERA','ANTIQUE_REMEDY','ENCHANTED_BOOK','WASHED_UP_SOUVENIR','MANA_FLUX_POWER_ORB','CROWN_OF_GREED','ROTTEN_FLESH'] },
+  Derpy:   { icon:'🎪', color:'#ec4899', desc:'Double les XP de skill et booste la consommation de crops de farming.', boost:'Farming items × 2', duration:'~48h (événement court)', items:['SUGAR_CANE','WHEAT','CARROT_ITEM','POTATO_ITEM','PUMPKIN','MELON','COCOA_BEANS','NETHER_WART','ENCHANTED_SUGAR_CANE','ENCHANTED_CARROT','ENCHANTED_POTATO','ENCHANTED_MELON'] },
+  Cole:    { icon:'⛏️', color:'#f97316', desc:'Booste le mining et les gemstones. Les minerais et gemmes montent en demande.', boost:'Mining & Gemstones +20–50%', duration:'~1 mois', items:['MITHRIL_ORE','TITANIUM_ORE','RUBY_GEM','SAPPHIRE_GEM','AMETHYST_GEM','TOPAZ_GEM','JASPER_GEM','COAL','IRON_INGOT','GOLD_INGOT','DIAMOND','EMERALD'] },
+  Finnegan:{ icon:'🌾', color:'#22c55e', desc:'Double les crop milestones — tous les crops de farming sont très demandés.', boost:'Crop milestones × 2', duration:'~1 mois', items:['WHEAT','CARROT_ITEM','POTATO_ITEM','SUGAR_CANE','PUMPKIN','MELON','MUSHROOM_COLLECTION','CACTUS','COCOA_BEANS'] },
+  Marina:  { icon:'🎣', color:'#06b6d4', desc:'Double les Sea Creature drops — tout ce qui vient de la pêche monte.', boost:'Fishing drops × 2', duration:'~1 mois', items:['PRISMARINE_SHARD','PRISMARINE_CRYSTALS','SPONGE','SHARK_FIN','SEA_CREATURE_FANG','SULPHUR','MAGMA_FISH'] },
+  Paul:    { icon:'⚔️', color:'#ef4444', desc:'Active EZPZ, booste le combat XP — potions et items de combat très demandés.', boost:'Combat items & potions boostés', duration:'~1 mois', items:['SPEED_POTION','STRENGTH_POTION','CRITICAL_POTION','SPIDER_EYE','BLAZE_POWDER','GHAST_TEAR','ROTTEN_FLESH','BONE','SLIME_BALL'] },
+  Scorpia: { icon:'🦂', color:'#84cc16', desc:'Booste les Slayer — drops des boss slayer en forte hausse.', boost:'Slayer XP × 2', duration:'~1 mois', items:['TARANTULA_WEB','REVENANT_FLESH','VOIDLING_CATALYST','WOLF_TOOTH','SPIDER_CATALYST','ENCHANTED_ROTTEN_FLESH','ENCHANTED_BONE'] },
+  Aatrox:  { icon:'🌊', color:'#0ea5e9', desc:'Double XP Slayer tous types — items de toutes les zones de slayer montent.', boost:'All Slayer × 2', duration:'~1 mois', items:['REVENANT_FLESH','TARANTULA_WEB','WOLF_TOOTH','VOIDLING_CATALYST','ENCHANTED_ROTTEN_FLESH','ENCHANTED_BONE','ENCHANTED_SPIDER_EYE'] }
+};
+
+let allItems=[], filteredItems=[], selectedItem=null, currentMayor=null;
+
+// ===== FORMAT =====
+function fmt(n){ if(n===undefined||n===null||isNaN(n))return'—'; if(n>=1e9)return(n/1e9).toFixed(2)+'B'; if(n>=1e6)return(n/1e6).toFixed(2)+'M'; if(n>=1e3)return(n/1e3).toFixed(1)+'K'; return Math.round(n).toLocaleString(); }
+function fmtC(n){ return fmt(n)+' 💰'; }
+function pct(v){ return(v*100).toFixed(1)+'%'; }
+function hrsToStr(h){ if(!h||!isFinite(h))return'∞'; if(h<1)return Math.round(h*60)+'min'; if(h<24)return h.toFixed(1)+'h'; return(h/24).toFixed(1)+' jours'; }
+
+// ===== MANIPULATION ANALYSIS =====
+function analyzeManip(item){
+  const qs=item.qs, bo=qs.buyOrders||0, so=qs.sellOrders||0;
+  const margin=item.margin, hourlyVol=item.hourlyVol;
+  let score=0; const signals=[];
+
+  // 1. Order ratio
+  const total=bo+so;
+  const ratio=total>0?bo/total:0.5;
+  if(ratio>0.88||ratio<0.12){ score+=32; signals.push({l:'Ratio buy/sell orders',v:`${bo}/${so}`,tip:'Déséquilibre extrême',c:'bad'}); }
+  else if(ratio>0.75||ratio<0.25){ score+=14; signals.push({l:'Ratio buy/sell orders',v:`${bo}/${so}`,tip:'Déséquilibre modéré',c:'warn'}); }
+  else { signals.push({l:'Ratio buy/sell orders',v:`${bo}/${so}`,tip:'Équilibré',c:'ok'}); }
+
+  // 2. Spread anormal
+  if(margin>0.5){ score+=35; signals.push({l:'Spread/marge',v:pct(margin),tip:'> 50% — très suspect',c:'bad'}); }
+  else if(margin>0.25){ score+=14; signals.push({l:'Spread/marge',v:pct(margin),tip:'Élevée — surveiller',c:'warn'}); }
+  else { signals.push({l:'Spread/marge',v:pct(margin),tip:'Normale',c:'ok'}); }
+
+  // 3. Profondeur marché
+  if(total<5){ score+=30; signals.push({l:'Profondeur marché',v:`${total} ordres`,tip:'Trop peu d\'ordres',c:'bad'}); }
+  else if(total<15){ score+=10; signals.push({l:'Profondeur marché',v:`${total} ordres`,tip:'Marché peu profond',c:'warn'}); }
+  else { signals.push({l:'Profondeur marché',v:`${total} ordres`,tip:'Marché profond',c:'ok'}); }
+
+  // 4. Volume vs spread
+  if(hourlyVol<10&&margin>0.15){ score+=25; signals.push({l:'Volume vs spread',v:`${fmt(hourlyVol)}/h · ${pct(margin)}`,tip:'Pump probable',c:'bad'}); }
+  else if(hourlyVol<100&&margin>0.2){ score+=12; signals.push({l:'Volume vs spread',v:`${fmt(hourlyVol)}/h`,tip:'Rapport suspect',c:'warn'}); }
+  else { signals.push({l:'Volume vs spread',v:`${fmt(hourlyVol)}/h`,tip:'Correct',c:'ok'}); }
+
+  let level,text;
+  if(score>=55){ level='danger'; text='⛔ MANIPULATION PROBABLE — Spread/volume/ordres tous suspects. Évitez ce flip, risque de dump ou wall artificiel.'; }
+  else if(score>=25){ level='risky'; text='⚠️ RISQUE MODÉRÉ — 1 ou 2 signaux suspects. Procédez avec prudence.'; }
+  else { level='safe'; text='✅ MARCHÉ SAIN — Aucun signal de manipulation détecté. Flip relativement sûr.'; }
+  return {signals,level,text,score};
+}
+
+// ===== LIQUIDITY ANALYSIS =====
+function analyzeLiq(item){
+  const bm=item.qs.buyMovingWeek||0;
+  const hourlyVol=bm/168;
+  // Temps pour différentes quantités
+  const t = q => bm>0 ? hrsToStr(q/(bm/168)) : '∞';
+  let liqLevel,liqPct;
+  if(hourlyVol>10000){liqLevel='high';liqPct=100;}
+  else if(hourlyVol>1000){liqLevel='high';liqPct=78;}
+  else if(hourlyVol>100){liqLevel='med';liqPct=45;}
+  else if(hourlyVol>10){liqLevel='med';liqPct=20;}
+  else{liqLevel='low';liqPct=5;}
+  const buyTimeStr=t(64);
+  return {liqLevel,liqPct,buyTimeStr,t64:t(64),t256:t(256),t512:t(512),t1k:t(1000),hourlyVol,weeklyVol:bm};
+}
+
+// ===== PROCESS DATA =====
+function processData(products){
+  allItems=[];
+  let bestProfit=0,manipCount=0,lowLiqCount=0,mayorCount=0;
+  const mayorItems = currentMayor&&MAYOR_DATA[currentMayor] ? new Set(MAYOR_DATA[currentMayor].items) : new Set();
+
+  for(const [id,p] of Object.entries(products)){
+    const qs=p.quick_status; if(!qs) continue;
+    // API Hypixel: buyPrice = meilleur sell order (prix instant buy)
+    //              sellPrice = meilleur buy order (prix instant sell)
+    // Flip long terme: on achete au sellPrice (buy order), on revend au buyPrice (sell order)
+    const displayBuy  = qs.sellPrice || 0;
+    const displaySell = qs.buyPrice  || 0;
+    if(!displayBuy||!displaySell||displayBuy<=0||displaySell<=0) continue;
+    const spread = displaySell - displayBuy;
+    if(spread<=0) continue;
+    const margin = spread/displayBuy;
+    if(margin<0.001) continue;
+    const profitAfterTax = displaySell*0.99 - displayBuy;
+
+    const weeklyVol=((qs.buyMovingWeek||0)+(qs.sellMovingWeek||0))/2;
+    const hourlyVol=weeklyVol/168;
+
+    // Category
+    let cat='MISC';
+    const id_=id.toUpperCase();
+    if(['SUGAR_CANE','WHEAT','CARROT_ITEM','POTATO_ITEM','PUMPKIN','MELON','COCOA_BEANS','MUSHROOM_COLLECTION','NETHER_WART','CACTUS'].some(f=>id_.startsWith(f))||['ENCHANTED_CARROT','ENCHANTED_POTATO','ENCHANTED_SUGAR','ENCHANTED_MELON','ENCHANTED_WHEAT','ENCHANTED_PUMPKIN','ENCHANTED_COCOA'].some(f=>id_.includes(f))) cat='FARMING';
+    else if(id_.includes('MITHRIL')||id_.includes('TITANIUM')||['COAL','IRON_INGOT','GOLD_INGOT','DIAMOND','EMERALD','REDSTONE','LAPIS','QUARTZ','OBSIDIAN'].some(f=>id_.startsWith(f))||id_.includes('_GEM')) cat='MINING';
+    else if(id_.includes('FISHING')||id_.includes('PRISMARINE')||id_.includes('SPONGE')||id_.includes('SHARK')||id_.includes('SULPHUR')||id_.includes('SEA_CREATURE')) cat='FISHING';
+    else if(['ROTTEN_FLESH','BONE','GHAST_TEAR','SPIDER_EYE','SLIME_BALL','BLAZE_POWDER','MAGMA_CREAM'].some(f=>id_.startsWith(f))||id_.includes('TARANTULA')||id_.includes('REVENANT')||id_.includes('WOLF_TOOTH')||id_.includes('VOIDLING')) cat='COMBAT';
+    else if(id_.includes('LOG')||id_.includes('_WOOD')||id_.includes('LEAVES')) cat='FORAGING';
+    else if(id_.includes('ENCHANTED_BOOK')||id_.includes('_BOOK')||id_.includes('ENCHANTED_')) cat='ENCHANTING';
+
+    const isMayorItem=mayorItems.has(id)||mayorItems.has(id_);
+    if(isMayorItem) cat='MAYOR';
+
+    const name=id.replace(/_/g,' ').toLowerCase().replace(/\b\w/g,c=>c.toUpperCase());
+
+    const manip=analyzeManip({qs,buyPrice:displayBuy,sellPrice:displaySell,weeklyVol,hourlyVol,margin});
+    const liq=analyzeLiq({qs,hourlyVol,weeklyVol});
+
+    // Score
+    const mScore=Math.min(margin/0.3,1)*30;
+    const vScore=Math.min(hourlyVol/5000,1)*30;
+    const lScore=liq.liqPct*0.2;
+    const sScore=margin<0.5?20:margin<0.3?14:5;
+    const mMalus=manip.level==='danger'?30:manip.level==='risky'?12:0;
+    const mBonus=isMayorItem?15:0;
+    const score=Math.max(0,mScore+vScore+lScore+sScore-mMalus+mBonus);
+
+    let rec='wait';
+    if(manip.level==='danger') rec='avoid';
+    else if(isMayorItem||(margin>0.08&&hourlyVol>200&&manip.level==='safe')) rec='buy';
+
+    allItems.push({id,name,buyPrice:displayBuy,sellPrice:displaySell,spread,margin,profitAfterTax,hourlyVol,weeklyVol,score,cat,rec,qs,manip,liq,isMayorItem});
+    if(profitAfterTax>bestProfit) bestProfit=profitAfterTax;
+    if(manip.level==='danger') manipCount++;
+    if(liq.liqLevel==='low') lowLiqCount++;
+    if(isMayorItem) mayorCount++;
+  }
+
+  allItems.sort((a,b)=>b.score-a.score);
+  syncBazaarPricesToCraft(products);
+  document.getElementById('sOpps').textContent=allItems.length;
+  document.getElementById('sBest').textContent=fmt(bestProfit);
+  document.getElementById('sManip').textContent=manipCount;
+  document.getElementById('sLowLiq').textContent=lowLiqCount;
+  document.getElementById('sMayor').textContent=mayorCount;
+  filteredItems=[...allItems];
+  renderTable();
+}
+
+// ===== RENDER =====
+function renderTable(){
+  const body=document.getElementById('tableBody');
+  if(filteredItems.length===0){ body.innerHTML=`<div class="empty"><div class="big">🔍</div><p>Aucun résultat.</p></div>`; return; }
+  body.innerHTML=filteredItems.map((item,i)=>{
+    const mBadge=item.manip.level==='danger'?`<span class="b b-r">⛔ Manip</span>`:item.manip.level==='risky'?`<span class="b b-o">⚠️ Risque</span>`:`<span class="b b-g">✅ Sûr</span>`;
+    const lBadge=item.liq.liqLevel==='high'?`<span class="b b-g">💧H</span>`:item.liq.liqLevel==='med'?`<span class="b b-y">💧M</span>`:`<span class="b b-r">💧F</span>`;
+    const rBadge=item.rec==='buy'?`<span class="b b-g">🟢 ACHETER</span>`:item.rec==='avoid'?`<span class="b b-r">🚫 ÉVITER</span>`:`<span class="b b-b">🔵 ATTENDRE</span>`;
+    const mTag=item.isMayorItem?`<span class="b b-p">⭐ Maire</span>`:'';
+    return `<div class="t-row" onclick="openDetail(${i})" style="animation-delay:${Math.min(i*12,220)}ms">
+      <div><div class="i-name">${item.name}</div><div class="i-sub">${mTag}<span>${item.cat}</span></div></div>
+      <div class="cell">${fmt(item.buyPrice)}<div style="font-size:10px;color:var(--muted)">order ~${item.liq.buyTimeStr}</div></div>
+      <div class="cell">${fmt(item.sellPrice)}</div>
+      <div class="cell" style="color:${item.profitAfterTax>0?'var(--green)':'var(--red)'}">
+        ${item.profitAfterTax>0?'+':''}${fmt(item.profitAfterTax)}
+        <div style="font-size:10px;color:var(--muted)">${pct(item.margin)}</div>
+      </div>
+      <div class="cell col-liq2">
+        ${lBadge}
+        <div class="liq-bar"><div class="lf-${item.liq.liqLevel==='high'?'h':item.liq.liqLevel==='med'?'m':'l'}" style="width:${item.liq.liqPct}%;height:100%;border-radius:2px;"></div></div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px">${fmt(item.liq.hourlyVol)}/h</div>
+      </div>
+      <div class="cell col-manip">${mBadge}</div>
+      <div class="cell col-act">${rBadge}</div>
+    </div>`;
+  }).join('');
+}
+
+// ===== FILTER & SORT =====
+function filterItems(){
+  const q=document.getElementById('searchInput').value.toLowerCase();
+  const cat=document.getElementById('catSel').value;
+  const minP=parseFloat(document.getElementById('minProfSel').value)||0;
+  const m=document.getElementById('manipSel').value;
+  const l=document.getElementById('liqSel').value;
+  filteredItems=allItems.filter(item=>{
+    if(q&&!item.name.toLowerCase().includes(q)&&!item.id.toLowerCase().includes(q)) return false;
+    if(cat!=='all'&&item.cat!==cat) return false;
+    if(item.profitAfterTax<minP) return false;
+    if(m==='safe'&&item.manip.level!=='safe') return false;
+    if(m==='hide_danger'&&item.manip.level==='danger') return false;
+    if(l==='high'&&item.liq.liqLevel!=='high') return false;
+    if(l==='med'&&item.liq.liqLevel==='low') return false;
+    return true;
+  });
+  sortItems(true);
+}
+function sortItems(skip=false){
+  const s=document.getElementById('sortSel').value;
+  filteredItems.sort((a,b)=>{
+    if(s==='profit') return b.profitAfterTax-a.profitAfterTax;
+    if(s==='margin') return b.margin-a.margin;
+    if(s==='volume') return b.hourlyVol-a.hourlyVol;
+    if(s==='liq')    return b.liq.liqPct-a.liq.liqPct;
+    return b.score-a.score;
+  });
+  renderTable();
+}
+
+// ===== DETAIL =====
+function openDetail(idx){
+  const item=filteredItems[idx]; if(!item) return;
+  selectedItem=item;
+  document.getElementById('dpName').textContent=item.name;
+  document.getElementById('dpId').textContent=item.id;
+
+  // Long-term banner
+  const lt=document.getElementById('ltBanner');
+  if(item.isMayorItem&&currentMayor&&MAYOR_DATA[currentMayor]){
+    const m=MAYOR_DATA[currentMayor];
+    lt.style.display='block'; lt.style.borderColor=m.color; lt.style.background=m.color+'18'; lt.style.color=m.color;
+    lt.innerHTML=`<strong>${m.icon} Flip Long Terme — Lié au Maire ${currentMayor}</strong><br>${m.desc}<br><span style="opacity:.75">💡 ${m.boost} · ${m.duration} — Achetez maintenant, revendez après le changement de maire</span>`;
+  } else { lt.style.display='none'; }
+
+  // Stats grid
+  document.getElementById('dpGrid').innerHTML=[
+    {l:'Prix achat BZ',   v:fmtC(item.buyPrice),          c:''},
+    {l:'Prix vente visé', v:fmtC(item.sellPrice),         c:'gre'},
+    {l:'Profit net/u',    v:fmtC(item.profitAfterTax),    c:item.profitAfterTax>0?'gre':'re'},
+    {l:'Marge',           v:pct(item.margin),              c:item.margin>0.1?'gre':''},
+    {l:'Volume /h',       v:fmt(item.liq.hourlyVol),       c:'blu'},
+    {l:'Volume /semaine', v:fmt(item.liq.weeklyVol),       c:''},
+    {l:'Buy order ×64',   v:item.liq.t64,                  c:'blu'},
+    {l:'Score global',    v:item.score.toFixed(0)+'/100',  c:'acc'},
+  ].map(d=>`<div class="d-stat"><div class="d-label">${d.l}</div><div class="d-val" style="${d.c==='gre'?'color:var(--green)':d.c==='acc'?'color:var(--accent)':d.c==='blu'?'color:var(--accent2)':d.c==='re'?'color:var(--red)':''}">${d.v}</div></div>`).join('');
+
+  // Manipulation signals
+  const ma=item.manip;
+  document.getElementById('manipSignals').innerHTML=ma.signals.map(s=>`
+    <div class="sig-row">
+      <span class="sig-label">${s.l}</span>
+      <div class="sig-right">
+        <span class="sig-tip">${s.tip}</span>
+        <span class="sig-val" style="color:${s.c==='ok'?'var(--green)':s.c==='warn'?'var(--accent)':'var(--red)'}">${s.v}</span>
+      </div>
+    </div>`).join('');
+  const mv=document.getElementById('manipVerdict');
+  mv.className='verdict v-'+ma.level; mv.textContent=ma.text;
+
+  // Liquidity signals
+  const lq=item.liq;
+  document.getElementById('liqSignals').innerHTML=[
+    {l:'Volume horaire',          v:fmt(lq.hourlyVol)+'/h',   c:'blu'},
+    {l:'Volume hebdomadaire',     v:fmt(lq.weeklyVol)+'/sem', c:''},
+    {l:'Niveau de liquidité',     v:lq.liqLevel==='high'?'💧 Haute':lq.liqLevel==='med'?'💧 Moyenne':'💧 Faible', c:lq.liqLevel==='high'?'gre':lq.liqLevel==='med'?'acc':'re'},
+    {l:'Temps buy order × 64 u',  v:lq.t64,  c:'acc'},
+    {l:'Temps buy order × 256 u', v:lq.t256, c:'acc'},
+    {l:'Temps buy order × 512 u', v:lq.t512, c:'acc'},
+    {l:'Temps buy order × 1000 u',v:lq.t1k,  c:'acc'},
+  ].map(d=>`<div class="sig-row"><span class="sig-label">${d.l}</span><span class="sig-val" style="color:${d.c==='gre'?'var(--green)':d.c==='acc'?'var(--accent)':d.c==='blu'?'var(--accent2)':d.c==='re'?'var(--red)':'var(--text)'}">${d.v}</span></div>`).join('');
+
+  document.getElementById('simBuy').placeholder=Math.round(item.buyPrice);
+  document.getElementById('simSell').placeholder=Math.round(item.sellPrice);
+  document.getElementById('detailPanel').classList.add('open');
+  document.getElementById('detailPanel').scrollIntoView({behavior:'smooth',block:'nearest'});
+  updateSim();
+}
+function closeDetail(){ document.getElementById('detailPanel').classList.remove('open'); selectedItem=null; }
+
+function updateSim(){
+  if(!selectedItem) return;
+  const qty=parseFloat(document.getElementById('simQty').value)||1;
+  const buyP=parseFloat(document.getElementById('simBuy').value)||selectedItem.buyPrice;
+  const sellP=parseFloat(document.getElementById('simSell').value)||selectedItem.sellPrice;
+  const tax=sellP*qty*0.01, cost=buyP*qty, rev=sellP*qty, net=rev-cost-tax;
+  const mg=((sellP-buyP)/buyP*100).toFixed(2);
+  const bm=selectedItem.qs.buyMovingWeek||0;
+  const buyH=bm>0?qty/(bm/168):null;
+  const buyStr=!buyH?'Inconnu':hrsToStr(buyH);
+  document.getElementById('simResult').innerHTML=`
+    <div class="sl"><span style="color:var(--muted)">Investissement</span><span>${fmtC(cost)}</span></div>
+    <div class="sl"><span style="color:var(--muted)">Revenu brut</span><span>${fmtC(rev)}</span></div>
+    <div class="sl"><span style="color:var(--muted)">Taxe AH (1%)</span><span style="color:var(--red)">− ${fmtC(tax)}</span></div>
+    <div class="sl sep"><span style="color:var(--muted)">Profit net</span><span style="color:${net>0?'var(--green)':'var(--red)'};font-weight:600">${net>0?'+':''}${fmtC(net)}</span></div>
+    <div class="sl"><span style="color:var(--muted)">Marge</span><span style="color:var(--accent)">${mg}%</span></div>
+    <div class="sl"><span style="color:var(--muted)">Temps buy order</span><span style="color:var(--accent2)">${buyStr}</span></div>
+    <div class="sl"><span style="color:var(--muted)">Rentable si &gt;</span><span style="color:var(--muted)">${fmtC(cost)} investi</span></div>`;
+}
+
+// ===== MANUAL CALC =====
+function calcAH(){
+  const buy=parseFloat(document.getElementById('ahBuy').value)||0;
+  const sell=parseFloat(document.getElementById('ahSell').value)||0;
+  const qty=parseFloat(document.getElementById('ahQty').value)||1;
+  const tax=sell*qty*0.01,cost=buy*qty,rev=sell*qty,net=rev-cost-tax;
+  const mg=buy>0?((sell-buy)/buy*100).toFixed(2):'—';
+  document.getElementById('ahResult').innerHTML=`
+    <div class="rl"><span>Coût total</span><span>${fmtC(cost)}</span></div>
+    <div class="rl"><span>Revenu brut</span><span>${fmtC(rev)}</span></div>
+    <div class="rl"><span>Taxe AH 1%</span><span class="vn">− ${fmtC(tax)}</span></div>
+    <div class="rl sep"><span>Profit net</span><span class="${net>0?'vp':'vn'}">${net>0?'+':''}${fmtC(net)}</span></div>
+    <div class="rl"><span>Marge</span><span class="va">${mg}%</span></div>`;
+}
+function calcBZ(){
+  const buy=parseFloat(document.getElementById('bzBuy').value)||0;
+  const sell=parseFloat(document.getElementById('bzSell').value)||0;
+  const qty=parseFloat(document.getElementById('bzQty').value)||1;
+  const days=parseFloat(document.getElementById('bzDays').value)||1;
+  const bt=parseFloat(document.getElementById('bzBuyTime').value)||0;
+  const invest=buy*qty,rev=sell*qty,net=rev-invest;
+  const mg=buy>0?((sell-buy)/buy*100).toFixed(2):'—';
+  const perDay=days>0?net/days:0;
+  const roi=invest>0?(net/invest*100).toFixed(2):'—';
+  document.getElementById('bzResult').innerHTML=`
+    <div class="rl"><span>Investissement</span><span>${fmtC(invest)}</span></div>
+    <div class="rl"><span>Revenu brut</span><span>${fmtC(rev)}</span></div>
+    <div class="rl sep"><span>Profit net</span><span class="${net>0?'vp':'vn'}">${net>0?'+':''}${fmtC(net)}</span></div>
+    <div class="rl"><span>Marge</span><span class="va">${mg}%</span></div>
+    <div class="rl"><span>Profit/jour</span><span class="vp">${fmtC(perDay)}</span></div>
+    <div class="rl"><span>ROI total</span><span class="vb">${roi}%</span></div>
+    ${bt>0?`<div class="rl"><span>Temps buy order</span><span class="vb">${bt}h</span></div>`:''}`;
+}
+function calcROI(){
+  const cap=parseFloat(document.getElementById('roiCap').value)||0;
+  const prof=parseFloat(document.getElementById('roiProfit').value)||0;
+  const weekly=parseFloat(document.getElementById('roiWeekly').value)||1;
+  const weekP=prof*weekly,monthP=weekP*4.33;
+  const roiM=cap>0?(monthP/cap*100).toFixed(2):'—';
+  const rec=monthP>0?Math.ceil(cap/monthP)+' mois':'∞';
+  document.getElementById('roiResult').innerHTML=`
+    <div class="rl"><span>Profit/semaine</span><span class="vp">+ ${fmtC(weekP)}</span></div>
+    <div class="rl"><span>Profit/mois</span><span class="vp">+ ${fmtC(monthP)}</span></div>
+    <div class="rl"><span>ROI mensuel</span><span class="vb">${roiM}%</span></div>
+    <div class="rl sep"><span>Récupération</span><span class="va">${rec}</span></div>`;
+}
+
+// ===== MAYOR =====
+function showMayor(name){
+  if(!MAYOR_DATA[name]) return;
+  currentMayor=name;
+  const m=MAYOR_DATA[name];
+  const banner=document.getElementById('mayorBanner');
+  banner.style.display='flex'; banner.style.borderColor=m.color; banner.style.background=m.color+'14';
+  document.getElementById('mIcon').textContent=m.icon;
+  document.getElementById('mName').innerHTML=`<span style="color:${m.color}">${name}</span> — Maire actif`;
+  document.getElementById('mDesc').textContent=m.desc;
+  document.getElementById('mCycle').textContent=`⏱ ${m.duration} · Cliquez sur un item ci-dessous pour filtrer`;
+  document.getElementById('mItems').innerHTML=m.items.slice(0,8).map(id=>{
+    const n=id.replace(/_/g,' ').toLowerCase().replace(/\b\w/g,c=>c.toUpperCase());
+    return `<span class="m-chip" style="border:1px solid ${m.color}40;color:${m.color}" onclick="searchItem('${n}')">${n}</span>`;
+  }).join('');
+}
+function searchItem(n){ document.getElementById('searchInput').value=n; document.getElementById('catSel').value='all'; filterItems(); }
+
+
+// ===== FETCH BAZAAR — endpoints avec Access-Control-Allow-Origin: * =====
+async function fetchBazaarData(){
+  const ENDPOINTS=[
+    // Hypixel API via query.coflnet.com (CORS * confirmé)
+    {url:'https://query.coflnet.com/api/bazaar/json', src:'coflnet-query'},
+    // neu.moulberry.codes — CORS ouvert
+    {url:'https://neu.moulberry.codes/bazaar.json', src:'neu-moulberry'},
+    // skyblock-api via vercel proxy (CORS *)
+    {url:'https://hypixel-bazaar.vercel.app/api/bazaar', src:'vercel-bazaar'},
+    // SkyHelper API (CORS *)
+    {url:'https://skyhelper.altpapier.dev/api/bazaar', src:'skyhelper'},
+  ];
+
+  for(const ep of ENDPOINTS){
+    try{
+      console.log('[SkyFlip] Essai:',ep.src);
+      const r=await fetch(ep.url,{
+        method:'GET',
+        headers:{'Accept':'application/json'},
+        signal:AbortSignal.timeout(10000)
+      });
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      const d=await r.json();
+      console.log('[SkyFlip] OK:',ep.src, typeof d, Array.isArray(d)?'len='+d.length:'keys='+Object.keys(d||{}).length);
+      return {source:ep.src, data:d};
+    }catch(e){
+      console.warn('[SkyFlip]',ep.src,'échoué:',e.message);
+    }
+  }
+  throw new Error('Aucun endpoint disponible. Essayez d\'héberger le fichier sur un serveur (ex: GitHub Pages).');
+}
+
+// ===== API =====
+async function loadAll(){
+  const btn=document.getElementById('refreshBtn');
+  const dot=document.getElementById('dot');
+  const st=document.getElementById('st');
+  btn.disabled=true; btn.textContent='⟳ Chargement...';
+  dot.className='dot'; st.textContent='Connexion...';
+  document.getElementById('tableBody').innerHTML=`<div class="loading"><div class="sp"></div><div>Récupération API Hypixel...</div></div>`;
+  await Promise.all([loadBazaar(),loadMayor()]);
+  btn.disabled=false; btn.textContent='⟳ Actualiser';
+  const now=new Date().toLocaleTimeString('fr-FR');
+  dot.className='dot live'; st.textContent='En direct · '+now;
+  document.getElementById('sTime').textContent=now;
+}
+async function loadBazaar(){
+  try{
+    const {source,data}=await fetchBazaarData();
+    console.log('[SkyFlip] Source:',source,'data type:',typeof data, Array.isArray(data)?'array len='+data.length:'');
+    let products={};
+
+    if(Array.isArray(data)){
+      // coflnet array format
+      for(const item of data){
+        const id=item.productId||item.tag||item.id;
+        if(!id) continue;
+        const qs=item.quickStatus||item.quick_status||{};
+        products[id]={quick_status:{
+          buyPrice:  item.buyPrice  ||qs.buyPrice  ||0,
+          sellPrice: item.sellPrice ||qs.sellPrice ||0,
+          buyMovingWeek:  item.buyVolume  ||qs.buyMovingWeek  ||item.buyMovingWeek  ||0,
+          sellMovingWeek: item.sellVolume ||qs.sellMovingWeek ||item.sellMovingWeek ||0,
+          buyOrders:  item.buyOrders  ||qs.buyOrders  ||1,
+          sellOrders: item.sellOrders ||qs.sellOrders ||1,
+        }};
+      }
+    } else if(data && typeof data==='object'){
+      const root=data.products||data;
+      for(const [id,item] of Object.entries(root)){
+        if(!item||typeof item!=='object') continue;
+        const qs=item.quick_status||item.quickStatus||item;
+        products[id]={quick_status:{
+          buyPrice:  qs.buyPrice  ||0,
+          sellPrice: qs.sellPrice ||0,
+          buyMovingWeek:  qs.buyMovingWeek  ||qs.buyVolume  ||0,
+          sellMovingWeek: qs.sellMovingWeek ||qs.sellVolume ||0,
+          buyOrders:  qs.buyOrders  ||1,
+          sellOrders: qs.sellOrders ||1,
+        }};
+      }
+    }
+
+    const count=Object.keys(products).length;
+    if(count===0) throw new Error('Aucun produit parsé (source='+source+')');
+    console.log('[SkyFlip]',count,'produits parsés depuis',source);
+    processData(products);
+
+  }catch(e){
+    console.error('[SkyFlip] Erreur API:',e);
+    document.getElementById('dot').className='dot err';
+    document.getElementById('st').textContent='Erreur';
+    document.getElementById('tableBody').innerHTML=`<div class="empty">
+      <div class="big">⚠️</div>
+      <p style="margin-bottom:10px;color:var(--text);font-size:13px">Impossible de charger les données Bazaar.</p>
+      <p style="font-size:11px;color:var(--muted);max-width:480px;margin:0 auto;line-height:1.8">${e.message}</p>
+      <div style="margin-top:16px;padding:14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;text-align:left;max-width:480px;margin:16px auto 0;font-size:11px;line-height:1.9;">
+        <div style="color:var(--accent);font-weight:600;margin-bottom:6px;">💡 Solution recommandée</div>
+        <div style="color:var(--muted)">Le fichier ouvert en local (file://) est bloqué par les navigateurs pour des raisons de sécurité (CORS).<br><br>
+        <strong style="color:var(--text)">Option 1 — GitHub Pages (gratuit) :</strong><br>
+        1. Créez un compte sur github.com<br>
+        2. Nouveau repo → uploadez ce fichier .html<br>
+        3. Settings → Pages → Branch: main → Save<br>
+        4. Accédez via <em>votre-nom.github.io/repo</em><br><br>
+        <strong style="color:var(--text)">Option 2 — Serveur local :</strong><br>
+        Ouvrez un terminal dans le dossier du fichier et lancez :<br>
+        <code style="color:var(--accent2)">python3 -m http.server 8080</code><br>
+        Puis ouvrez <em>http://localhost:8080</em></div>
+      </div>
+    </div>`;
+  }
+}
+async function loadMayor(){
+  try{
+    const r=await fetch('https://sky.coflnet.com/api/election/current',{signal:AbortSignal.timeout(6000)});
+    if(r.ok){const d=await r.json();const n=d?.mayor?.name||d?.name;if(n)showMayor(n);}
+  }catch(e){console.warn('[SkyFlip] Mayor:',e.message);}
+}
+
+
+// ===== TABS =====
+function switchTab(name,el){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  ['flips','calc','craft','about'].forEach(t=>{ const e=document.getElementById('tab-'+t); if(e) e.style.display=t===name?'block':'none'; });
+}
+
+
+// ===== CRAFT DATABASE =====
+// Recettes Bazaar/Enchanted items — format: {id, name, cat, mats:[{id,qty}], sellBZ, sellAH}
+// Les prix des mats sont récupérés dynamiquement depuis bazaarPrices
+// sellBZ = prix de vente au Bazaar (sell order), sellAH = estimation AH
+
+const CRAFT_RECIPES = [
+  // === FARMING ===
+  {id:'ENCHANTED_SUGAR_CANE',name:'Enchanted Sugar Cane',cat:'FARMING',collection:{id:'SUGAR_CANE',lvl:5},mats:[{id:'SUGAR_CANE',qty:160}],sellBZ:true},
+  {id:'ENCHANTED_CARROT',name:'Enchanted Carrot',cat:'FARMING',collection:{id:'CARROT_ITEM',lvl:5},mats:[{id:'CARROT_ITEM',qty:160}],sellBZ:true},
+  {id:'ENCHANTED_POTATO',name:'Enchanted Potato',cat:'FARMING',collection:{id:'POTATO_ITEM',lvl:5},mats:[{id:'POTATO_ITEM',qty:160}],sellBZ:true},
+  {id:'ENCHANTED_MELON',name:'Enchanted Melon',cat:'FARMING',collection:{id:'MELON',lvl:5},mats:[{id:'MELON',qty:160}],sellBZ:true},
+  {id:'ENCHANTED_PUMPKIN',name:'Enchanted Pumpkin',cat:'FARMING',collection:{id:'PUMPKIN',lvl:5},mats:[{id:'PUMPKIN',qty:160}],sellBZ:true},
+  {id:'ENCHANTED_WHEAT',name:'Enchanted Wheat',cat:'FARMING',collection:{id:'WHEAT',lvl:5},mats:[{id:'WHEAT',qty:160}],sellBZ:true},
+  {id:'ENCHANTED_NETHER_WART',name:'Enchanted Nether Wart',cat:'FARMING',collection:{id:'NETHER_WART',lvl:6},mats:[{id:'NETHER_WART',qty:160}],sellBZ:true},
+  {id:'ENCHANTED_COCOA',name:'Enchanted Cocoa',cat:'FARMING',collection:{id:'INK_SACK',lvl:4},mats:[{id:'COCOA_BEANS',qty:160}],sellBZ:true},
+  {id:'ENCHANTED_MUSHROOM',name:'Enchanted Mushroom',cat:'FARMING',collection:{id:'MUSHROOM_COLLECTION',lvl:5},mats:[{id:'MUSHROOM_COLLECTION',qty:160}],sellBZ:true},
+  {id:'ENCHANTED_CACTUS',name:'Enchanted Cactus',cat:'FARMING',collection:{id:'CACTUS',lvl:5},mats:[{id:'CACTUS',qty:160}],sellBZ:true},
+  {id:'ENCHANTED_HAY_BALE',name:'Enchanted Hay Bale',cat:'FARMING',collection:{id:'WHEAT',lvl:7},mats:[{id:'ENCHANTED_WHEAT',qty:9}],sellBZ:true},
+  {id:'ENCHANTED_SUGAR',name:'Enchanted Sugar',cat:'FARMING',collection:{id:'SUGAR_CANE',lvl:3},mats:[{id:'SUGAR_CANE',qty:128}],sellBZ:true},
+
+  // === MINING ===
+  {id:'ENCHANTED_COBBLESTONE',name:'Enchanted Cobblestone',cat:'MINING',collection:{id:'COBBLESTONE',lvl:1},mats:[{id:'COBBLESTONE',qty:160}],sellBZ:true},
+  {id:'ENCHANTED_COAL',name:'Enchanted Coal',cat:'MINING',collection:{id:'COAL',lvl:3},mats:[{id:'COAL',qty:160}],sellBZ:true},
+  {id:'ENCHANTED_IRON_INGOT',name:'Enchanted Iron Ingot',cat:'MINING',collection:{id:'IRON_INGOT',lvl:4},mats:[{id:'IRON_INGOT',qty:160}],sellBZ:true},
+  {id:'ENCHANTED_GOLD_INGOT',name:'Enchanted Gold Ingot',cat:'MINING',collection:{id:'GOLD_INGOT',lvl:4},mats:[{id:'GOLD_INGOT',qty:160}],sellBZ:true},
+  {id:'ENCHANTED_DIAMOND',name:'Enchanted Diamond',cat:'MINING',collection:{id:'DIAMOND',lvl:6},mats:[{id:'DIAMOND',qty:160}],sellBZ:true},
+  {id:'ENCHANTED_EMERALD',name:'Enchanted Emerald',cat:'MINING',collection:{id:'EMERALD',lvl:5},mats:[{id:'EMERALD',qty:160}],sellBZ:true},
+  {id:'ENCHANTED_REDSTONE',name:'Enchanted Redstone',cat:'MINING',collection:{id:'REDSTONE',lvl:3},mats:[{id:'REDSTONE',qty:160}],sellBZ:true},
+  {id:'ENCHANTED_LAPIS_LAZULI',name:'Enchanted Lapis',cat:'MINING',collection:{id:'INK_SACK:4',lvl:3},mats:[{id:'LAPIS_LAZULI',qty:160}],sellBZ:true},
+  {id:'ENCHANTED_QUARTZ',name:'Enchanted Quartz',cat:'MINING',collection:{id:'QUARTZ',lvl:3},mats:[{id:'QUARTZ',qty:160}],sellBZ:true},
+  {id:'ENCHANTED_OBSIDIAN',name:'Enchanted Obsidian',cat:'MINING',collection:{id:'OBSIDIAN',lvl:7},mats:[{id:'OBSIDIAN',qty:160}],sellBZ:true},
+  {id:'MITHRIL_ORE',name:'Mithril Ore ×160',cat:'MINING',collection:null,mats:[{id:'MITHRIL_ORE',qty:160}],sellBZ:true},
+  {id:'ENCHANTED_IRON_BLOCK',name:'Enchanted Iron Block',cat:'MINING',collection:{id:'IRON_INGOT',lvl:7},mats:[{id:'ENCHANTED_IRON_INGOT',qty:9}],sellBZ:true},
+  {id:'ENCHANTED_GOLD_BLOCK',name:'Enchanted Gold Block',cat:'MINING',collection:{id:'GOLD_INGOT',lvl:7},mats:[{id:'ENCHANTED_GOLD_INGOT',qty:9}],sellBZ:true},
+  {id:'ENCHANTED_DIAMOND_BLOCK',name:'Enchanted Diamond Block',cat:'MINING',collection:{id:'DIAMOND',lvl:9},mats:[{id:'ENCHANTED_DIAMOND',qty:9}],sellBZ:true},
+
+  // === COMBAT ===
+  {id:'ENCHANTED_ROTTEN_FLESH',name:'Enchanted Rotten Flesh',cat:'COMBAT',collection:{id:'ROTTEN_FLESH',lvl:3},mats:[{id:'ROTTEN_FLESH',qty:160}],sellBZ:true},
+  {id:'ENCHANTED_BONE',name:'Enchanted Bone',cat:'COMBAT',collection:{id:'BONE',lvl:3},mats:[{id:'BONE',qty:160}],sellBZ:true},
+  {id:'ENCHANTED_STRING',name:'Enchanted String',cat:'COMBAT',collection:{id:'STRING',lvl:3},mats:[{id:'STRING',qty:160}],sellBZ:true},
+  {id:'ENCHANTED_SPIDER_EYE',name:'Enchanted Spider Eye',cat:'COMBAT',collection:{id:'SPIDER_EYE',lvl:4},mats:[{id:'SPIDER_EYE',qty:160}],sellBZ:true},
+  {id:'ENCHANTED_GUNPOWDER',name:'Enchanted Gunpowder',cat:'COMBAT',collection:{id:'SULPHUR',lvl:4},mats:[{id:'SULPHUR',qty:160}],sellBZ:true},
+  {id:'ENCHANTED_BLAZE_POWDER',name:'Enchanted Blaze Powder',cat:'COMBAT',collection:{id:'BLAZE_ROD',lvl:5},mats:[{id:'BLAZE_POWDER',qty:160}],sellBZ:true},
+  {id:'ENCHANTED_GHAST_TEAR',name:'Enchanted Ghast Tear',cat:'COMBAT',collection:{id:'GHAST_TEAR',lvl:5},mats:[{id:'GHAST_TEAR',qty:160}],sellBZ:true},
+  {id:'ENCHANTED_SLIME_BALL',name:'Enchanted Slime Ball',cat:'COMBAT',collection:{id:'SLIME_BALL',lvl:4},mats:[{id:'SLIME_BALL',qty:160}],sellBZ:true},
+  {id:'ENCHANTED_MAGMA_CREAM',name:'Enchanted Magma Cream',cat:'COMBAT',collection:{id:'MAGMA_CREAM',lvl:5},mats:[{id:'MAGMA_CREAM',qty:160}],sellBZ:true},
+
+  // === FISHING ===
+  {id:'ENCHANTED_RAW_FISH',name:'Enchanted Raw Fish',cat:'FISHING',collection:{id:'RAW_FISH',lvl:3},mats:[{id:'RAW_FISH',qty:160}],sellBZ:true},
+  {id:'ENCHANTED_RAW_SALMON',name:'Enchanted Raw Salmon',cat:'FISHING',collection:{id:'RAW_FISH:1',lvl:4},mats:[{id:'RAW_FISH:1',qty:160}],sellBZ:true},
+  {id:'ENCHANTED_PRISMARINE_SHARD',name:'Enchanted Prismarine Shard',cat:'FISHING',collection:{id:'PRISMARINE_SHARD',lvl:5},mats:[{id:'PRISMARINE_SHARD',qty:160}],sellBZ:true},
+  {id:'ENCHANTED_PRISMARINE_CRYSTALS',name:'Enchanted Prismarine Crystals',cat:'FISHING',collection:{id:'PRISMARINE_CRYSTALS',lvl:5},mats:[{id:'PRISMARINE_CRYSTALS',qty:160}],sellBZ:true},
+  {id:'ENCHANTED_SPONGE',name:'Enchanted Sponge',cat:'FISHING',collection:{id:'SPONGE',lvl:8},mats:[{id:'SPONGE',qty:160}],sellBZ:true},
+  {id:'SULPHUR',name:'Sulphur ×160',cat:'FISHING',collection:null,mats:[{id:'SULPHUR',qty:160}],sellBZ:true},
+
+  // === FORAGING ===
+  {id:'ENCHANTED_OAK_LOG',name:'Enchanted Oak Log',cat:'FORAGING',collection:{id:'LOG',lvl:3},mats:[{id:'LOG',qty:160}],sellBZ:true},
+  {id:'ENCHANTED_BIRCH_LOG',name:'Enchanted Birch Log',cat:'FORAGING',collection:{id:'LOG:2',lvl:3},mats:[{id:'LOG:2',qty:160}],sellBZ:true},
+  {id:'ENCHANTED_DARK_OAK_LOG',name:'Enchanted Dark Oak Log',cat:'FORAGING',collection:{id:'LOG_2:1',lvl:3},mats:[{id:'LOG_2:1',qty:160}],sellBZ:true},
+  {id:'ENCHANTED_JUNGLE_LOG',name:'Enchanted Jungle Log',cat:'FORAGING',collection:{id:'LOG:3',lvl:3},mats:[{id:'LOG:3',qty:160}],sellBZ:true},
+  {id:'ENCHANTED_ACACIA_LOG',name:'Enchanted Acacia Log',cat:'FORAGING',collection:{id:'LOG_2',lvl:3},mats:[{id:'LOG_2',qty:160}],sellBZ:true},
+
+  // === ENCHANTING ===
+  {id:'GRAND_EXP_BOTTLE',name:'Grand Exp Bottle',cat:'ENCHANTING',collection:null,mats:[{id:'GLASS_BOTTLE',qty:8},{id:'ENCHANTED_SUGAR',qty:1}],sellBZ:true},
+  {id:'TITANIC_EXP_BOTTLE',name:'Titanic Exp Bottle',cat:'ENCHANTING',collection:null,mats:[{id:'GRAND_EXP_BOTTLE',qty:8},{id:'ENCHANTED_SUGAR_CANE',qty:1}],sellBZ:true},
+];
+
+// ===== PLAYER STATE =====
+let playerData=null;  // {name, purse, collections:{id:amount}, profileId}
+let bazaarPrices={};  // id -> {buyPrice, sellPrice}
+let craftResults=[];  // computed craft profits
+
+// ===== PLAYER LOAD =====
+async function loadPlayer(){
+  const pseudo=document.getElementById('playerInput').value.trim();
+  if(!pseudo) return;
+  const btn=document.getElementById('playerBtn');
+  const errDiv=document.getElementById('playerError');
+  btn.disabled=true; btn.textContent='⏳ Chargement...';
+  errDiv.style.display='none';
+  document.getElementById('playerInfo').style.display='none';
+
+  try{
+    // 1. Get UUID from Mojang API (CORS open)
+    const mojang=await fetch(`https://api.mojang.com/users/profiles/minecraft/${pseudo}`,{signal:AbortSignal.timeout(8000)});
+    if(!mojang.ok) throw new Error('Joueur introuvable — vérifiez le pseudo');
+    const mojData=await mojang.json();
+    const uuid=mojData.id;
+    const name=mojData.name;
+
+    // 2. Get player data from SkyCrypt (CORS open, no key needed)
+    const skyRes=await fetch(`https://sky.shiiyu.moe/api/v2/profile/${name}`,{signal:AbortSignal.timeout(12000)});
+    if(!skyRes.ok) throw new Error('Profil Skyblock introuvable sur SkyCrypt (joueur peut-être pas encore connecté à SkyBlock)');
+    const skyData=await skyRes.json();
+
+    // 3. Parse profiles — pick the most played one
+    const profiles=skyData.profiles;
+    if(!profiles||Object.keys(profiles).length===0) throw new Error('Aucun profil SkyBlock trouvé');
+
+    // Populate profile selector
+    const profSel=document.getElementById('profileSel');
+    profSel.style.display='';
+    profSel.innerHTML=Object.entries(profiles).map(([pid,p])=>
+      `<option value="${pid}">${p.cute_name||pid}${p.selected?' ★':''}</option>`
+    ).join('');
+    // Select the active one
+    const activeEntry=Object.entries(profiles).find(([,p])=>p.selected)||Object.entries(profiles)[0];
+    profSel.value=activeEntry[0];
+
+    // Parse selected profile
+    parseProfile(name,uuid,profiles,profSel.value);
+
+  }catch(e){
+    errDiv.style.display='block';
+    errDiv.textContent='❌ '+e.message;
+    console.error('[SkyFlip Player]',e);
+  }
+  btn.disabled=false; btn.textContent='🔍 Charger';
+}
+
+function onProfileChange(){
+  if(!playerData) return;
+  // Re-parse with new profile selection
+  const sel=document.getElementById('profileSel').value;
+  // We need the cached skyData — store it globally
+  if(window._skyProfiles && window._skyName){
+    parseProfile(window._skyName, window._skyUUID, window._skyProfiles, sel);
+  }
+}
+
+function parseProfile(name, uuid, profiles, profileId){
+  window._skyName=name; window._skyUUID=uuid; window._skyProfiles=profiles;
+  const profile=profiles[profileId];
+  if(!profile) return;
+
+  // Find the member data for this player
+  const member=profile.members?.[uuid.replace(/-/g,'')] || profile.members?.[uuid] || Object.values(profile.members||{})[0] || profile;
+
+  // Purse
+  const purse = member.currencies?.coin_purse
+    || member.coin_purse
+    || member.profile?.bank_account
+    || profile.banking?.balance
+    || 0;
+
+  // Collections — format varies by API version
+  let collections={};
+  const rawColl = member.collection || member.collections || {};
+  for(const [k,v] of Object.entries(rawColl)){
+    collections[k.toUpperCase()]=v;
+  }
+
+  playerData={name, uuid, purse, collections, profileId, profileName: profile.cute_name||profileId};
+
+  // Show player info
+  document.getElementById('playerInfo').style.display='flex';
+  document.getElementById('playerAvatar').src=`https://crafatar.com/avatars/${uuid}?size=48&overlay`;
+  document.getElementById('playerName').textContent=name;
+  document.getElementById('playerStats').innerHTML=`
+    <div class="p-stat"><div class="p-stat-label">Purse</div><div class="p-stat-val gold">${fmt(purse)} 💰</div></div>
+    <div class="p-stat"><div class="p-stat-label">Profil</div><div class="p-stat-val">${playerData.profileName}</div></div>
+    <div class="p-stat"><div class="p-stat-label">Collections</div><div class="p-stat-val">${Object.keys(collections).length}</div></div>
+  `;
+
+  computeCrafts();
+}
+
+// ===== COMPUTE CRAFT PROFITS =====
+function computeCrafts(){
+  if(!playerData) return;
+  craftResults=[];
+
+  for(const recipe of CRAFT_RECIPES){
+    // Check collection requirement
+    let collectionUnlocked=true;
+    let collectionLabel='';
+    if(recipe.collection){
+      const colId=recipe.collection.id.replace(':','_').toUpperCase();
+      const colAmount=playerData.collections[colId]||playerData.collections[recipe.collection.id.toUpperCase()]||0;
+      collectionUnlocked=colAmount>0; // simplified: if any collection, assume unlocked
+      collectionLabel=recipe.collection.id.replace(/_/g,' ')+' Coll. LvL '+recipe.collection.lvl;
+    }
+
+    // Compute material cost
+    let totalCost=0, canCompute=true;
+    const matDetails=[];
+    for(const mat of recipe.mats){
+      const price=getBazaarBuyPrice(mat.id);
+      if(!price||price<=0){ canCompute=false; }
+      const matCost=(price||0)*mat.qty;
+      totalCost+=matCost;
+      matDetails.push({
+        id:mat.id,
+        name:mat.id.replace(/_/g,' ').toLowerCase().replace(/\w/g,c=>c.toUpperCase()),
+        qty:mat.qty,
+        unitPrice:price||0,
+        totalCost:matCost
+      });
+    }
+    if(!canCompute||totalCost<=0) continue;
+
+    // Sell prices
+    const sellBZPrice = getBazaarSellPrice(recipe.id);
+    const sellAHPrice = estimateAHPrice(recipe.id, sellBZPrice);
+
+    const profitBZ = sellBZPrice>0 ? sellBZPrice - totalCost : 0;
+    const profitBZAfterTax = profitBZ; // BZ has no tax on sell orders
+    const profitAH = sellAHPrice>0 ? sellAHPrice*0.99 - totalCost : 0;
+
+    const marginBZ = totalCost>0&&sellBZPrice>0 ? (profitBZ/totalCost) : 0;
+    const marginAH = totalCost>0&&sellAHPrice>0 ? (profitAH/totalCost) : 0;
+
+    const canAfford = playerData.purse >= totalCost;
+
+    // Category
+    let cat=recipe.cat||'MISC';
+
+    craftResults.push({
+      ...recipe,
+      cat,
+      totalCost,
+      matDetails,
+      sellBZPrice,
+      sellAHPrice,
+      profitBZ:profitBZAfterTax,
+      profitAH,
+      marginBZ,
+      marginAH,
+      canAfford,
+      collectionUnlocked,
+      collectionLabel,
+    });
+  }
+
+  renderCrafts();
+}
+
+function getBazaarBuyPrice(id){
+  // buyPrice in our normalized data = instantBuyPrice (what you pay)
+  const p=bazaarPrices[id]||bazaarPrices[id.toUpperCase()];
+  return p?.instantBuy||p?.buyPrice||0;
+}
+
+function getBazaarSellPrice(id){
+  // sellPrice = what you get when selling via sell order
+  const p=bazaarPrices[id]||bazaarPrices[id.toUpperCase()];
+  return p?.sellPrice||p?.instantSell||0;
+}
+
+function estimateAHPrice(id, bzSellPrice){
+  // Estimate AH price as 10-30% above BZ sell price for items typically sold on AH
+  // This is a rough estimate — ideally we'd have AH data
+  if(!bzSellPrice||bzSellPrice<=0) return 0;
+  return bzSellPrice * 1.15; // 15% premium on AH vs BZ
+}
+
+// ===== RENDER CRAFTS =====
+function renderCrafts(){
+  const list=document.getElementById('craftList');
+  if(!playerData){
+    list.innerHTML='<div class="no-player-msg"><div style="font-size:28px;margin-bottom:8px">⚒️</div><div>Entrez votre pseudo pour voir les crafts rentables</div></div>';
+    return;
+  }
+  if(craftResults.length===0){
+    list.innerHTML='<div class="no-player-msg"><div style="font-size:28px;margin-bottom:8px">⚠️</div><div>Aucun craft calculable — les prix Bazaar ne sont pas encore chargés.<br>Allez d'abord dans l'onglet Flips pour charger les données.</div></div>';
+    return;
+  }
+
+  const sort=document.getElementById('craftSortSel').value;
+  const catF=document.getElementById('craftCatSel').value;
+  const affordF=document.getElementById('craftAffordSel').value;
+  const minP=parseFloat(document.getElementById('craftMinProfSel').value)||0;
+
+  let results=[...craftResults];
+
+  // Filters
+  if(catF!=='all') results=results.filter(r=>r.cat===catF);
+  if(affordF==='affordable') results=results.filter(r=>r.canAfford&&r.collectionUnlocked);
+  const profField=sort==='profit_ah'?'profitAH':'profitBZ';
+  results=results.filter(r=>Math.max(r.profitBZ,r.profitAH)>=minP);
+
+  // Sort
+  results.sort((a,b)=>{
+    if(sort==='profit_bz') return b.profitBZ-a.profitBZ;
+    if(sort==='profit_ah') return b.profitAH-a.profitAH;
+    if(sort==='margin') return Math.max(b.marginBZ,b.marginAH)-Math.max(a.marginBZ,a.marginAH);
+    if(sort==='cost') return a.totalCost-b.totalCost;
+    return b.profitBZ-a.profitBZ;
+  });
+
+  if(results.length===0){
+    list.innerHTML='<div class="no-player-msg"><div style="font-size:22px;margin-bottom:8px">🔍</div><div>Aucun craft trouvé avec ces filtres</div></div>';
+    return;
+  }
+
+  list.innerHTML=`<div class="craft-grid">${results.map((r,i)=>craftCard(r,i)).join('')}</div>`;
+}
+
+function craftCard(r, i){
+  const canUse=r.canAfford&&r.collectionUnlocked;
+  const bestProfit=Math.max(r.profitBZ,r.profitAH);
+  const bestMargin=Math.max(r.marginBZ,r.marginAH);
+  const profitColor=bestProfit>0?'var(--green)':'var(--red)';
+
+  const matsHtml=r.matDetails.map(m=>`
+    <div class="craft-mat">
+      <span class="craft-mat-name">×${m.qty} ${m.name}</span>
+      <span class="craft-mat-cost ${m.unitPrice<=0?'missing':''}">${m.unitPrice>0?fmt(m.totalCost)+' 💰':'Prix inconnu'}</span>
+    </div>`).join('');
+
+  const sellRowHtml=`
+    ${r.sellBZPrice>0?`<span class="b b-b" style="font-size:10px">BZ: ${fmt(r.sellBZPrice)}</span>`:''}
+    ${r.sellAHPrice>0?`<span class="b b-y" style="font-size:10px">AH≈: ${fmt(r.sellAHPrice)}</span>`:''}
+  `;
+
+  const statusHtml=canUse
+    ? `<div class="craft-affordable">✅ Abordable & débloqué — Investissement : ${fmtC(r.totalCost)}</div>`
+    : !r.collectionUnlocked
+    ? `<div class="craft-locked">🔒 Collection requise : ${r.collectionLabel||'?'}</div>`
+    : `<div class="craft-locked">💸 Purse insuffisant — Manque ${fmtC(r.totalCost-playerData.purse)}</div>`;
+
+  return `<div class="craft-card ${!canUse?'cant-afford':''}" style="animation-delay:${Math.min(i*20,300)}ms">
+    <div class="craft-header">
+      <div>
+        <div class="craft-name">${r.name}</div>
+        <div class="craft-cat">${r.cat}</div>
+      </div>
+      <div class="craft-profit">
+        <div class="craft-profit-val" style="color:${profitColor}">${bestProfit>0?'+':''} ${fmt(bestProfit)}</div>
+        <div class="craft-profit-label">${(bestMargin*100).toFixed(1)}% marge</div>
+      </div>
+    </div>
+    <div class="craft-mats">${matsHtml}</div>
+    <div class="craft-totals">
+      <span style="color:var(--muted)">Coût total</span>
+      <span>${fmtC(r.totalCost)}</span>
+    </div>
+    <div class="craft-sell-row">
+      <span style="color:var(--muted);font-size:10px">Revente :</span>
+      ${sellRowHtml}
+    </div>
+    ${statusHtml}
+    <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
+      ${r.profitBZ>0?`<span class="b b-g" style="font-size:10px">BZ +${fmt(r.profitBZ)}</span>`:''}
+      ${r.profitAH>0?`<span class="b b-y" style="font-size:10px">AH +${fmt(r.profitAH)}</span>`:''}
+    </div>
+  </div>`;
+}
+
+// ===== HOOK BAZAAR PRICES INTO CRAFT =====
+// Called after processData to sync prices
+function syncBazaarPricesToCraft(products){
+  bazaarPrices={};
+  for(const [id,p] of Object.entries(products)){
+    bazaarPrices[id]={
+      instantBuy: p.quick_status?.buyPrice||0,
+      instantSell:p.quick_status?.sellPrice||0,
+      buyPrice:   p.quick_status?.buyPrice||0,
+      sellPrice:  p.quick_status?.sellPrice||0,
+    };
+  }
+  if(playerData) computeCrafts();
+}
+
+// ===== INIT =====
+loadAll();
+setInterval(loadAll,90000);
+</script>
+</body>
+</html>
